@@ -1,0 +1,99 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "ESP-IDF Build",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"ByPass",
+				"-Command",
+				"& 'C:\\software\\espidf\\v5.4.1\\esp-idf\\export.ps1'; idf.py build"
+			],
+			"group": "build",
+			"problemMatcher": [
+				"$gcc"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "ESP-IDF Flash",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"ByPass",
+				"-Command",
+				"& 'C:\\software\\espidf\\v5.4.1\\esp-idf\\export.ps1'; idf.py flash"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"isBackground": false
+		},
+		{
+			"label": "ESP-IDF Monitor",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"ByPass",
+				"-Command",
+				"& 'C:\\software\\espidf\\v5.4.1\\esp-idf\\export.ps1'; idf.py monitor"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"isBackground": true
+		},
+		{
+			"label": "ESP-IDF Build and Flash",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"ByPass",
+				"-Command",
+				"& 'C:\\software\\espidf\\v5.4.1\\esp-idf\\export.ps1'; idf.py build flash"
+			],
+			"group": "build",
+			"problemMatcher": [
+				"$gcc"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "ESP-IDF Clean",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"ByPass",
+				"-Command",
+				"& 'C:\\software\\espidf\\v5.4.1\\esp-idf\\export.ps1'; idf.py clean"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"isBackground": false
+		},
+		{
+			"label": "ESP-IDF Menuconfig",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"ByPass",
+				"-Command",
+				"& 'C:\\software\\espidf\\v5.4.1\\esp-idf\\export.ps1'; idf.py menuconfig"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"isBackground": false
+		}
+	]
+}

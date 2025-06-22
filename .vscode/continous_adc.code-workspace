@@ -1,0 +1,30 @@
+{
+  "folders": [
+    { "path": ".." }
+  ],
+  "settings": {
+    // 1 — your original header override
+    "files.associations": {
+      "semphr.h": "c"
+    },
+
+    // 2 — IDF-aware PowerShell profile
+    "terminal.integrated.profiles.windows": {
+      "ESP-IDF PowerShell": {
+        // re-use the system PowerShell
+        "source": "PowerShell",
+        "args": [
+          "-NoLogo",
+          "-ExecutionPolicy", "ByPass",
+          "-NoExit",
+          "-Command",
+          "& 'C:\\software\\espidf\\v5.4.1\\esp-idf\\export.ps1'"
+        ],
+        "icon": "terminal-powershell"
+      }
+    },
+
+    // 3 — make it the default terminal
+    "terminal.integrated.defaultProfile.windows": "ESP-IDF PowerShell"
+  }
+}
