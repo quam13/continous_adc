@@ -1,4 +1,4 @@
-## Continuous ADC Capture with Application‑Level Circular Buffer (Option A)
+## Continuous ADC Capture with Application‑Level Circular Buffer(Under dev)
 
 ### Overview
 
