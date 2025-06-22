@@ -28,6 +28,8 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <inttypes.h>
 #include "sdkconfig.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -255,7 +257,7 @@ void app_main(void)
 {
     esp_err_t ret;
     uint32_t ret_num = 0;
-    uint8_t result[EXAMPLE_READ_LEN] = {0};
+    uint8_t result[EXAMPLE_READ_LEN] __attribute__((aligned(4))) = {0};
 
     // RAM usage calculation (as per README):
     // - READ_LEN (256 bytes) for frame buffer
