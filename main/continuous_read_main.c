@@ -11,7 +11,7 @@
  *
  * 1. ADC Continuous Driver - Uses official ESP-IDF driver with 4KB pool
  * 2. Application-Level Ring Buffer - Power-of-2 sized circular buffer (32K samples)
- * 3. DMA → IDF Pool → memcpy → circ_buf[] → Trigger analysis (TODO)
+ * 3. DMA → IDF Pool → memcpy → circ_buf[] → Trigger analysis (TODO: its is buggy when I tried to implement trapfilter. So I want to first have a working circular buffer implementation)
  *
  * Based on the official example and GPT vibe coding
  * Seems to show the correct voltage with some errors. But needs a lot of modification on . 
