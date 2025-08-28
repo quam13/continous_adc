@@ -5,20 +5,16 @@
  */
 
 /*
- * Continuous ADC Capture with Application‑Level Circular Buffer
+ * Continuous ADC Capture with Application‑Level Circular Buffer(Draft)
  *
- * This implementation follows the architecture described in README.md:
+ * 
  *
  * 1. ADC Continuous Driver - Uses official ESP-IDF driver with 4KB pool
  * 2. Application-Level Ring Buffer - Power-of-2 sized circular buffer (32K samples)
- * 3. DMA → IDF Pool → memcpy → circ_buf[] → Trigger analysis
+ * 3. DMA → IDF Pool → memcpy → circ_buf[] → Trigger analysis (TODO)
  *
- * Key Features:
- * - True circular history for oscilloscope-style pre-trigger capture
- * - High sample rates (up to 1 MSPS) with minimal CPU overhead
- * - Power-of-2 buffer size for efficient bit masking
- * - Atomic operations to protect shared data between ISR and tasks
- * - Calibrated voltage conversion with line-fitting
+ * Based on the official example and GPT vibe coding
+ * Seems to show the correct voltage with some errors. But needs a lot of modification on . 
  *
  * Architecture:
  * - Main task: Handles ADC data reading and circular buffer management
@@ -38,7 +34,6 @@
 #include "esp_adc/adc_continuous.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
-#include "trapfilter.h"
 
 #define EXAMPLE_ADC_UNIT ADC_UNIT_1
 #define _EXAMPLE_ADC_UNIT_STR(unit) #unit
@@ -78,11 +73,6 @@ static portMUX_TYPE s_data_lock = portMUX_INITIALIZER_UNLOCKED;         // Spinl
 // Statistics for display
 static volatile uint64_t s_voltage_sum = 0;
 static volatile uint32_t s_sample_count = 0;
-
-// Trapezoidal filter for signal processing
-static trap_filter_t s_trap_filter;
-static volatile int32_t s_filtered_value = 0;
-static volatile uint32_t s_filter_count = 0;
 
 // ADC Calibration variables
 static adc_cali_handle_t cali_handle = NULL;
@@ -202,24 +192,23 @@ static void processing_task(void *arg)
     while (1)
     {
         // Delay for 1 second to print results at a readable rate
-        vTaskDelay(pdMS_TO_TICKS(1000)); // Atomically copy and reset the shared variables
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        // Atomically copy and reset the shared variables
         portENTER_CRITICAL(&s_data_lock);
         uint64_t temp_sum = s_voltage_sum;
         uint32_t temp_count = s_sample_count;
         size_t temp_wr_pos = circ_buf_wr;
-        int32_t temp_filtered = s_filtered_value;
-        uint32_t temp_filter_count = s_filter_count;
         s_voltage_sum = 0;
         s_sample_count = 0;
-        s_filter_count = 0;
-        portEXIT_CRITICAL(&s_data_lock); // Calculate and print the average voltage for the last second
+        portEXIT_CRITICAL(&s_data_lock);
+
+        // Calculate and print the average voltage for the last second
         if (temp_count > 0)
         {
             uint32_t average_voltage = temp_sum / temp_count;
-            int32_t normalized_filter = (temp_filter_count > 0) ? trap_filter_get_normalized(&s_trap_filter) : 0;
-
-            ESP_LOGI(TAG, "Unit: %s, Channel: %d, Avg Voltage: %" PRIu32 " mV, Samples: %" PRIu32 ", BufPos: %zu, Filtered: %" PRId32 " (%" PRIu32 " updates)",
-                     unit, channel[0], average_voltage, temp_count, temp_wr_pos, normalized_filter, temp_filter_count);
+            ESP_LOGI(TAG, "Unit: %s, Channel: %d, Avg Voltage: %" PRIu32 " mV, Samples: %" PRIu32 ", BufPos: %zu",
+                     unit, channel[0], average_voltage, temp_count, temp_wr_pos);
         }
         else
         {
@@ -235,8 +224,10 @@ static void continuous_adc_init(adc_channel_t *channel, uint8_t channel_num, adc
     adc_continuous_handle_cfg_t adc_config = {
         .max_store_buf_size = 4096,
         .conv_frame_size = EXAMPLE_READ_LEN,
-        .flags.flush_pool = false, // Set to false to detect overflows properly
-    };
+        .flags.flush_pool = true, 
+
+    };// Note that the implementation of this flush stated in the official document:"When the pool is full, the old data in the buffer pool will be automatically flushed and new data will be written. Otherwise, when the pool is full, new conversion results will be lost."
+    //Is this a ring buffer? If so, how to test? And if this is really the circular buffer, there is no need for defining a TODO
     ESP_ERROR_CHECK(adc_continuous_new_handle(&adc_config, &handle));
 
     adc_continuous_config_t dig_cfg = {
@@ -250,7 +241,7 @@ static void continuous_adc_init(adc_channel_t *channel, uint8_t channel_num, adc
     for (int i = 0; i < channel_num; i++)
     {
         adc_pattern[i].atten = EXAMPLE_ADC_ATTEN;
-        adc_pattern[i].channel = channel[i] & 0x7;
+        adc_pattern[i].channel = channel[i];
         adc_pattern[i].unit = EXAMPLE_ADC_UNIT;
         adc_pattern[i].bit_width = EXAMPLE_ADC_BIT_WIDTH;
     }
@@ -273,12 +264,8 @@ void app_main(void)
     // Total ≈ 64KB as mentioned in README
     ESP_LOGI(TAG, "Initializing ADC continuous capture with %d sample circular buffer (%.1f KB)",
              CIRC_BUF_SAMPLES, (CIRC_BUF_SAMPLES * sizeof(uint16_t)) / 1024.0);
-    s_task_handle = xTaskGetCurrentTaskHandle();
 
-    // Initialize trapezoidal filter
-    trap_filter_init(&s_trap_filter);
-    ESP_LOGI(TAG, "Trapezoidal filter initialized (Length: %d, Gap: %d, Rate: %d)",
-             TRAP_FILTER_LENGTH, TRAP_FILTER_GAP, TRAP_FILTER_RATE);
+    s_task_handle = xTaskGetCurrentTaskHandle();
 
     // REMOVED: Queue is no longer needed
     // NEW: Create the processing and display task
@@ -315,7 +302,9 @@ void app_main(void)
                 size_t local_wr_pos;
                 portENTER_CRITICAL(&s_data_lock);
                 local_wr_pos = circ_buf_wr;
-                portEXIT_CRITICAL(&s_data_lock); // Process all samples in the frame without any critical sections
+                portEXIT_CRITICAL(&s_data_lock);
+
+                // Process all samples in the frame without any critical sections
                 for (int i = 0; i < ret_num; i += SOC_ADC_DIGI_RESULT_BYTES)
                 {
                     adc_digi_output_data_t *p = (adc_digi_output_data_t *)&result[i];
@@ -338,19 +327,6 @@ void app_main(void)
                             frame_voltage_sum += voltage_mv * 8; // Scale up to compensate for sampling
                         }
                     }
-                }
-
-                // Apply trapezoidal filter every 16 samples to reduce CPU load
-                // This provides good filtering while maintaining real-time performance
-                if (frame_sample_count >= 16)
-                {
-                    // Apply filter using the current write position
-                    size_t filter_pos = (local_wr_pos - 1) & CIRC_BUF_MASK;
-                    int32_t filtered_val = trap_filter_step(&s_trap_filter, circ_buf, CIRC_BUF_SAMPLES, filter_pos);
-
-                    // Store filtered value for display (will be updated atomically later)
-                    s_filtered_value = filtered_val;
-                    s_filter_count++;
                 }
 
                 // Update all shared variables once per frame (single critical section)
